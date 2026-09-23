@@ -11,7 +11,7 @@ export const Route = createFileRoute("/login")({
   validateSearch: (search) => {
     const redirect = typeof search.redirect === "string" && search.redirect.startsWith("/") && !search.redirect.startsWith("//") ? search.redirect : "/account";
     const error = typeof search.error === "string" ? search.error : "";
-    return { redirect, error };
+    return error ? { redirect, error } : { redirect };
   },
   head: () => noindexHead("Sign in"),
   component: LoginPage,
@@ -34,7 +34,7 @@ function LoginPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState(() => googleErrorMessage(errorFromUrl));
+  const [error, setError] = useState(() => googleErrorMessage(errorFromUrl ?? ""));
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
 

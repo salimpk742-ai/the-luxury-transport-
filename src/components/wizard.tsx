@@ -1,17 +1,22 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Navigate, useNavigate, useRouteContext } from "@tanstack/react-router";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
-import { ACCOUNT_TYPES, BODY_TYPES, FUELS, MAKES, MODELS, SPECS, TRANSMISSIONS, YEARS } from "@/lib/catalog";
+import { ACCOUNT_TYPES, BODY_TYPES, MAKES, MODELS, YEARS } from "@/lib/catalog";
 import { getDirectories, getMyProfile, getOwnedListing, saveMyListing } from "@/lib/marketplace/fns";
 import type { Category, ListingDetail, ListingDraft, Place, Profile } from "@/lib/marketplace/types";
-import { ListingCard } from "@/components/listing-card";
 import { LoadingBlock } from "@/components/states";
-import { Button, Field, SelectInput, TextArea, TextInput } from "@/components/ui";
+import { Button, Field, SelectInput, TextInput } from "@/components/ui";
 import { toast } from "sonner";
 
-const STEPS = ["Type", "Vehicle", "Price", "Location", "Photos", "Description", "Contact", "Preview"];
-
 type Photo = { url: string; alt: string };
+type DeliveryMode = "free" | "charge" | "none";
+
+const ADVERTISER_TYPES = [
+  ACCOUNT_TYPES.find((item) => item.value === "dealer")!,
+  ACCOUNT_TYPES.find((item) => item.value === "rental_company")!,
+  { value: "business", label: "Company" },
+  ACCOUNT_TYPES.find((item) => item.value === "individual")!,
+];
 
 type FormState = {
   type: "RENT" | "SALE";
@@ -50,6 +55,7 @@ type FormState = {
   deliveryScope: string;
   deliveryAreas: string;
   deliveryFee: string;
+  deliveryMode: DeliveryMode;
   airportDelivery: boolean;
   salePrice: string;
   accidentHistory: string;
@@ -70,21 +76,21 @@ type FormState = {
 
 const blank: FormState = {
   type: "RENT",
-  make: "Mercedes-Benz",
+  make: "BMW",
   model: "",
   variant: "",
   year: 2024,
-  bodyType: "SUV",
-  category: "suv",
+  bodyType: "Sedan",
+  category: "sedan",
   transmission: "Automatic",
   fuel: "Petrol",
   engine: "",
   seats: 5,
   color: "",
-  mileage: "",
+  mileage: "0",
   regionalSpec: "GCC",
   condition: "used",
-  areaSlug: "dubai-marina",
+  areaSlug: "dubai",
   pickupLocation: "",
   description: "",
   whatsapp: "",
@@ -105,6 +111,7 @@ const blank: FormState = {
   deliveryScope: "",
   deliveryAreas: "",
   deliveryFee: "",
+  deliveryMode: "free",
   airportDelivery: false,
   salePrice: "",
   accidentHistory: "",
@@ -112,7 +119,7 @@ const blank: FormState = {
   warranty: "",
   registrationStatus: "",
   photos: [],
-  accountType: "individual",
+  accountType: "dealer",
   fullName: "",
   companyName: "",
   salespersonName: "",
@@ -122,6 +129,14 @@ const blank: FormState = {
   companyDescription: "",
   logoUrl: "",
 };
+
+function deliveryModeFrom(listing: ListingDetail): DeliveryMode {
+  const text = `${listing.deliveryFee} ${listing.delivery}`.toLowerCase();
+  if (!listing.deliveryAvailable && !text.trim()) return "none";
+  if (text.includes("free") || text.includes("included")) return "free";
+  if (listing.deliveryAvailable || /\d/.test(text)) return "charge";
+  return "none";
+}
 
 function fromListing(listing: ListingDetail, profile: Profile | null): FormState {
   return {
@@ -133,12 +148,12 @@ function fromListing(listing: ListingDetail, profile: Profile | null): FormState
     year: listing.year,
     bodyType: listing.bodyType,
     category: listing.category,
-    transmission: listing.transmission,
-    fuel: listing.fuel,
+    transmission: listing.transmission || "Automatic",
+    fuel: listing.fuel || "Petrol",
     engine: listing.engine,
-    seats: listing.seats,
+    seats: listing.seats || 5,
     color: listing.color,
-    mileage: String(listing.mileage),
+    mileage: String(listing.mileage ?? 0),
     regionalSpec: listing.regionalSpec,
     condition: listing.condition,
     areaSlug: listing.slugArea,
@@ -146,7 +161,7 @@ function fromListing(listing: ListingDetail, profile: Profile | null): FormState
     description: listing.description,
     whatsapp: listing.whatsapp,
     phone: listing.phone,
-    preferredContact: listing.preferredContact,
+    preferredContact: "whatsapp",
     withDriver: listing.withDriver,
     dailyPrice: listing.dailyPrice?.toString() ?? "",
     weeklyPrice: listing.weeklyPrice?.toString() ?? "",
@@ -161,7 +176,8 @@ function fromListing(listing: ListingDetail, profile: Profile | null): FormState
     deliveryAvailable: listing.deliveryAvailable,
     deliveryScope: listing.deliveryScope,
     deliveryAreas: listing.deliveryAreas,
-    deliveryFee: listing.deliveryFee,
+    deliveryFee: String(listing.deliveryFee ?? "").match(/\d[\d,]*/)?.[0]?.replace(/,/g, "") ?? "",
+    deliveryMode: deliveryModeFrom(listing),
     airportDelivery: listing.airportDelivery,
     salePrice: listing.salePrice?.toString() ?? "",
     accidentHistory: listing.accidentHistory,
@@ -169,7 +185,7 @@ function fromListing(listing: ListingDetail, profile: Profile | null): FormState
     warranty: listing.warranty,
     registrationStatus: listing.registrationStatus,
     photos: listing.images.map((image) => ({ url: image.url, alt: image.alt })),
-    accountType: profile?.company?.accountType || profile?.accountType || "individual",
+    accountType: profile?.company?.accountType || profile?.accountType || "dealer",
     fullName: profile?.fullName ?? "",
     companyName: profile?.company?.name ?? "",
     salespersonName: profile?.company?.salespersonName ?? "",
@@ -206,6 +222,27 @@ async function compress(file: File) {
   }
 }
 
+function money(value: string) {
+  const digits = value.replace(/[^\d]/g, "");
+  return digits ? Number(digits).toLocaleString("en-AE") : "";
+}
+
+function summary(form: FormState) {
+  if (form.description.trim()) return form.description;
+  const name = [form.year, form.make, form.model].filter(Boolean).join(" ");
+  const bits = [name];
+  if (form.bodyType) bits.push(form.bodyType);
+  if (form.type === "RENT") {
+    if (form.dailyPrice) bits.push(`Daily AED ${money(form.dailyPrice)}`);
+    if (form.weeklyPrice) bits.push(`Weekly AED ${money(form.weeklyPrice)}`);
+  } else if (form.salePrice) {
+    bits.push(`AED ${money(form.salePrice)}`);
+  }
+  if (form.deliveryMode === "free") bits.push("Delivery free");
+  if (form.deliveryMode === "charge" && form.deliveryFee) bits.push(`Delivery AED ${money(form.deliveryFee)}`);
+  return bits.filter(Boolean).join(". ");
+}
+
 export function Wizard({ listingId }: { listingId?: number }) {
   const { user, isPending } = useCurrentUserState();
   if (isPending) return <LoadingBlock label="Loading your account" />;
@@ -216,7 +253,6 @@ export function Wizard({ listingId }: { listingId?: number }) {
 function WizardForm({ listingId }: { listingId?: number }) {
   const { site } = useRouteContext({ from: "__root__" });
   const navigate = useNavigate();
-  const [step, setStep] = useState(0);
   const [form, setForm] = useState<FormState>(blank);
   const [places, setPlaces] = useState<Place[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -234,13 +270,13 @@ function WizardForm({ listingId }: { listingId?: number }) {
         listingId ? getOwnedListing({ data: { id: listingId } }) : Promise.resolve(null),
       ]);
       if (cancel) return;
-      setPlaces(dirs.places.filter((place) => place.scope === "area"));
+      setPlaces(dirs.places.filter((place) => place.scope === "area" || place.slug === "dubai"));
       setCategories(dirs.categories);
       if (listing) setForm(fromListing(listing, profile));
       else if (profile) {
         setForm((current) => ({
           ...current,
-          accountType: profile.company?.accountType || profile.accountType || "individual",
+          accountType: profile.company?.accountType || profile.accountType || "dealer",
           fullName: profile.fullName,
           companyName: profile.accountType === "individual" ? "" : profile.company?.name ?? "",
           salespersonName: profile.company?.salespersonName ?? "",
@@ -251,7 +287,7 @@ function WizardForm({ listingId }: { listingId?: number }) {
           address: profile.company?.address ?? "",
           companyDescription: profile.company?.description ?? "",
           logoUrl: profile.company?.logoUrl ?? "",
-          areaSlug: dirs.places.find((place) => place.slug === "dubai-marina")?.slug ?? current.areaSlug,
+          areaSlug: dirs.places.find((place) => place.slug === "dubai")?.slug ?? current.areaSlug,
         }));
       }
       setReady(true);
@@ -263,90 +299,17 @@ function WizardForm({ listingId }: { listingId?: number }) {
 
   const patch = (partial: Partial<FormState>) => setForm((current) => ({ ...current, ...partial }));
   const models = MODELS[form.make] ?? [];
-
-  const preview = useMemo(() => {
-    const place = places.find((item) => item.slug === form.areaSlug);
-    const num = (value: string) => (value ? Number(value) : null);
-    return {
-      id: listingId ?? 0,
-      type: form.type,
-      status: "DRAFT",
-      title: `${form.year} ${form.make} ${form.model}${form.variant ? ` ${form.variant}` : ""}`.trim(),
-      slugVehicle: "preview",
-      slugArea: form.areaSlug,
-      make: form.make,
-      model: form.model,
-      variant: form.variant,
-      year: form.year,
-      bodyType: form.bodyType,
-      category: form.category,
-      categoryName: categories.find((item) => item.slug === form.category)?.name ?? form.category,
-      transmission: form.transmission,
-      fuel: form.fuel,
-      engine: form.engine,
-      seats: form.seats,
-      color: form.color,
-      mileage: Number(form.mileage || 0),
-      regionalSpec: form.regionalSpec,
-      emirate: place?.emirate ?? "Dubai",
-      area: place?.area ?? "Dubai",
-      pickupLocation: form.pickupLocation,
-      description: form.description,
-      whatsapp: form.whatsapp,
-      phone: form.phone,
-      preferredContact: form.preferredContact,
-      isFeatured: false,
-      promotionTier: "none",
-      views: 0,
-      whatsappLeads: 0,
-      phoneLeads: 0,
-      withDriver: form.withDriver,
-      availability: "available",
-      condition: form.condition,
-      sellerType: form.accountType,
-      publishedAt: null,
-      expiresAt: null,
-      createdAt: "",
-      companyId: 0,
-      companySlug: "preview",
-      companyName: form.accountType === "individual" ? form.fullName : form.companyName,
-      companyVerified: false,
-      companyLogo: form.logoUrl,
-      companyDescription: form.companyDescription,
-      companyArea: place?.area ?? "",
-      companyEmirate: place?.emirate ?? "",
-      companyPlan: "free",
-      companyWebsite: form.website,
-      isDemo: false,
-      dailyPrice: num(form.dailyPrice),
-      weeklyPrice: num(form.weeklyPrice),
-      monthlyPrice: num(form.monthlyPrice),
-      deposit: num(form.deposit),
-      minPeriod: form.minPeriod,
-      mileageAllowance: form.mileageAllowance,
-      extraMileagePrice: form.extraMileagePrice,
-      insurance: form.insurance,
-      driverRequirements: form.driverRequirements,
-      delivery: form.delivery,
-      deliveryAvailable: form.deliveryAvailable,
-      deliveryScope: form.deliveryScope,
-      deliveryAreas: form.deliveryAreas,
-      deliveryFee: form.deliveryFee,
-      airportDelivery: form.airportDelivery,
-      salePrice: num(form.salePrice),
-      accidentHistory: form.accidentHistory,
-      serviceHistory: form.serviceHistory,
-      warranty: form.warranty,
-      registrationStatus: form.registrationStatus,
-      imageUrl: form.photos[0]?.url ?? "",
-      imageAlt: form.photos[0]?.alt ?? "",
-    };
-  }, [categories, form, listingId, places]);
+  const digitsOnly = (value: string) => value.replace(/[^\d]/g, "");
 
   const submit = async (intent: "draft" | "publish") => {
     setBusy(true);
     setErrors([]);
     const num = (value: string) => (value === "" ? null : Number(value));
+    const fee = form.deliveryMode === "charge" ? digitsOnly(form.deliveryFee) : "";
+    const deliveryAvailable = form.type === "RENT" && form.deliveryMode !== "none";
+    const deliveryFee = form.deliveryMode === "free" ? "Free" : fee ? `AED ${fee}` : "";
+    const delivery = form.deliveryMode === "free" ? "Free delivery" : fee ? `Delivery AED ${fee}` : "";
+    const advertiserName = form.accountType === "individual" ? form.fullName : form.companyName || form.fullName;
     const payload: ListingDraft = {
       id: listingId,
       intent,
@@ -357,10 +320,10 @@ function WizardForm({ listingId }: { listingId?: number }) {
       year: form.year,
       bodyType: form.bodyType,
       category: form.category,
-      transmission: form.transmission,
-      fuel: form.fuel,
+      transmission: form.transmission || "Automatic",
+      fuel: form.fuel || "Petrol",
       engine: form.engine,
-      seats: form.seats,
+      seats: form.seats || 5,
       color: form.color,
       mileage: Number(form.mileage || 0),
       regionalSpec: form.regionalSpec,
@@ -368,27 +331,27 @@ function WizardForm({ listingId }: { listingId?: number }) {
       emirate: "",
       areaSlug: form.areaSlug,
       pickupLocation: form.pickupLocation,
-      description: form.description,
+      description: summary(form),
       whatsapp: form.whatsapp,
-      phone: form.phone,
-      preferredContact: form.preferredContact,
+      phone: form.whatsapp || form.phone,
+      preferredContact: "whatsapp",
       withDriver: form.withDriver,
-      dailyPrice: num(form.dailyPrice),
-      weeklyPrice: num(form.weeklyPrice),
-      monthlyPrice: num(form.monthlyPrice),
+      dailyPrice: form.type === "RENT" ? num(form.dailyPrice) : null,
+      weeklyPrice: form.type === "RENT" ? num(form.weeklyPrice) : null,
+      monthlyPrice: form.type === "RENT" ? num(form.monthlyPrice) : null,
       deposit: num(form.deposit),
       minPeriod: form.minPeriod,
       mileageAllowance: form.mileageAllowance,
       extraMileagePrice: form.extraMileagePrice,
       insurance: form.insurance,
       driverRequirements: form.driverRequirements,
-      delivery: form.delivery,
-      deliveryAvailable: form.deliveryAvailable,
-      deliveryScope: form.deliveryScope,
-      deliveryAreas: form.deliveryAreas,
-      deliveryFee: form.deliveryFee,
-      airportDelivery: form.airportDelivery,
-      salePrice: num(form.salePrice),
+      delivery: form.type === "RENT" ? delivery : "",
+      deliveryAvailable,
+      deliveryScope: deliveryAvailable ? "dubai" : "",
+      deliveryAreas: "",
+      deliveryFee: form.type === "RENT" ? deliveryFee : "",
+      airportDelivery: false,
+      salePrice: form.type === "SALE" ? num(form.salePrice) : null,
       accidentHistory: form.accidentHistory,
       serviceHistory: form.serviceHistory,
       warranty: form.warranty,
@@ -396,11 +359,11 @@ function WizardForm({ listingId }: { listingId?: number }) {
       photos: form.photos,
       advertiser: {
         accountType: form.accountType,
-        fullName: form.fullName,
-        companyName: form.companyName,
+        fullName: form.fullName || advertiserName,
+        companyName: form.accountType === "individual" ? "" : advertiserName,
         salespersonName: form.salespersonName,
         email: form.email,
-        phone: form.phone,
+        phone: form.whatsapp || form.phone,
         whatsapp: form.whatsapp,
         website: form.website,
         address: form.address,
@@ -430,287 +393,154 @@ function WizardForm({ listingId }: { listingId?: number }) {
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
       <p className="text-xs font-medium uppercase tracking-widest text-pine">Post your car</p>
-      <h1 className="mt-2 text-4xl text-ink">{STEPS[step]}</h1>
-      <ol className="mt-4 flex gap-1" aria-label="Progress">
-        {STEPS.map((label, index) => (
-          <li key={label} className="flex-1">
-            <button type="button" onClick={() => setStep(index)} className={`h-1.5 w-full rounded-full ${index <= step ? "bg-pine" : "bg-sand"}`} aria-label={label} />
-          </li>
-        ))}
-      </ol>
-      <p className="mt-2 text-sm text-muted">Step {step + 1} of {STEPS.length}</p>
+      <h1 className="mt-2 text-4xl text-ink">New listing</h1>
+      <p className="mt-2 text-sm text-ink-soft">Only the details a customer needs. One page.</p>
 
-      <div className="mt-6 space-y-4">
-        {step === 0 ? (
-          <div className="grid gap-3 sm:grid-cols-2">
-            <button type="button" onClick={() => patch({ type: "RENT" })} className={`rounded-3xl border p-5 text-left ${form.type === "RENT" ? "border-pine bg-foam" : "border-line bg-card"}`}>
-              <span className="text-2xl text-ink">Rent</span>
-              <p className="mt-1 text-sm text-ink-soft">Daily, weekly or monthly hire.</p>
-            </button>
-            <button type="button" onClick={() => patch({ type: "SALE" })} className={`rounded-3xl border p-5 text-left ${form.type === "SALE" ? "border-pine bg-foam" : "border-line bg-card"}`}>
-              <span className="text-2xl text-ink">Sell</span>
-              <p className="mt-1 text-sm text-ink-soft">A car offered for sale.</p>
-            </button>
-          </div>
-        ) : null}
+      <div className="mt-6 space-y-6">
+        <div className="grid grid-cols-2 gap-3">
+          <button type="button" onClick={() => patch({ type: "RENT" })} className={`rounded-3xl border p-4 text-left ${form.type === "RENT" ? "border-pine bg-foam" : "border-line bg-card"}`}>
+            <span className="text-xl text-ink">Rent</span>
+          </button>
+          <button type="button" onClick={() => patch({ type: "SALE" })} className={`rounded-3xl border p-4 text-left ${form.type === "SALE" ? "border-pine bg-foam" : "border-line bg-card"}`}>
+            <span className="text-xl text-ink">Sell</span>
+          </button>
+        </div>
 
-        {step === 1 ? (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Make">
+            <SelectInput value={form.make} onChange={(event) => patch({ make: event.target.value, model: "" })}>
+              {MAKES.map((make) => <option key={make}>{make}</option>)}
+            </SelectInput>
+          </Field>
+          <Field label="Model">
+            <TextInput value={form.model} list="model-list" onChange={(event) => patch({ model: event.target.value })} placeholder="735" />
+            <datalist id="model-list">{models.map((model) => <option key={model} value={model} />)}</datalist>
+          </Field>
+          <Field label="Year">
+            <SelectInput value={form.year} onChange={(event) => patch({ year: Number(event.target.value) })}>
+              {YEARS.map((year) => <option key={year}>{year}</option>)}
+            </SelectInput>
+          </Field>
+          <Field label="Category">
+            <SelectInput value={form.category} onChange={(event) => patch({ category: event.target.value })}>
+              {categories.map((item) => <option key={item.slug} value={item.slug}>{item.name}</option>)}
+            </SelectInput>
+          </Field>
+          <Field label="Body">
+            <SelectInput value={form.bodyType} onChange={(event) => patch({ bodyType: event.target.value })}>
+              {BODY_TYPES.map((item) => <option key={item}>{item}</option>)}
+            </SelectInput>
+          </Field>
+          <Field label="Area">
+            <SelectInput value={form.areaSlug} onChange={(event) => patch({ areaSlug: event.target.value })}>
+              {places.map((place) => <option key={place.slug} value={place.slug}>{place.area}</option>)}
+            </SelectInput>
+          </Field>
+        </div>
+
+        {form.type === "RENT" ? (
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Make">
-              <SelectInput value={form.make} onChange={(event) => patch({ make: event.target.value, model: "" })}>
-                {MAKES.map((make) => <option key={make}>{make}</option>)}
-              </SelectInput>
+            <Field label="Daily price (AED)">
+              <TextInput inputMode="numeric" value={form.dailyPrice} onChange={(event) => patch({ dailyPrice: digitsOnly(event.target.value) })} placeholder="1000" />
             </Field>
-            <Field label="Model">
-              <TextInput value={form.model} list="model-list" onChange={(event) => patch({ model: event.target.value })} placeholder="G-Class" />
-              <datalist id="model-list">{models.map((model) => <option key={model} value={model} />)}</datalist>
+            <Field label="Weekly price (AED)">
+              <TextInput inputMode="numeric" value={form.weeklyPrice} onChange={(event) => patch({ weeklyPrice: digitsOnly(event.target.value) })} placeholder="5000" />
             </Field>
-            <Field label="Variant">
-              <TextInput value={form.variant} onChange={(event) => patch({ variant: event.target.value })} placeholder="G 63" />
-            </Field>
-            <Field label="Year">
-              <SelectInput value={form.year} onChange={(event) => patch({ year: Number(event.target.value) })}>
-                {YEARS.map((year) => <option key={year}>{year}</option>)}
-              </SelectInput>
-            </Field>
-            <Field label="Body">
-              <SelectInput value={form.bodyType} onChange={(event) => patch({ bodyType: event.target.value })}>
-                {BODY_TYPES.map((item) => <option key={item}>{item}</option>)}
-              </SelectInput>
-            </Field>
-            <Field label="Category">
-              <SelectInput value={form.category} onChange={(event) => patch({ category: event.target.value })}>
-                {categories.map((item) => <option key={item.slug} value={item.slug}>{item.name}</option>)}
-              </SelectInput>
-            </Field>
-            <Field label="Transmission">
-              <SelectInput value={form.transmission} onChange={(event) => patch({ transmission: event.target.value })}>
-                {TRANSMISSIONS.map((item) => <option key={item}>{item}</option>)}
-              </SelectInput>
-            </Field>
-            <Field label="Fuel">
-              <SelectInput value={form.fuel} onChange={(event) => patch({ fuel: event.target.value })}>
-                {FUELS.map((item) => <option key={item}>{item}</option>)}
-              </SelectInput>
-            </Field>
-            <Field label="Engine">
-              <TextInput value={form.engine} onChange={(event) => patch({ engine: event.target.value })} placeholder="3.0L" />
-            </Field>
-            <Field label="Seats">
-              <SelectInput value={form.seats} onChange={(event) => patch({ seats: Number(event.target.value) })}>
-                {[2, 4, 5, 7, 8].map((n) => <option key={n}>{n}</option>)}
-              </SelectInput>
-            </Field>
-            <Field label="Colour">
-              <TextInput value={form.color} onChange={(event) => patch({ color: event.target.value })} />
-            </Field>
-            <Field label="Mileage (km)">
-              <TextInput inputMode="numeric" value={form.mileage} onChange={(event) => patch({ mileage: event.target.value.replace(/[^\d]/g, "") })} />
-            </Field>
-            <Field label="Regional specification">
-              <SelectInput value={form.regionalSpec} onChange={(event) => patch({ regionalSpec: event.target.value })}>
-                {SPECS.map((item) => <option key={item}>{item}</option>)}
-              </SelectInput>
-            </Field>
-            {form.type === "SALE" ? (
-              <Field label="New or used">
-                <SelectInput value={form.condition} onChange={(event) => patch({ condition: event.target.value })}>
-                  <option value="used">Used</option>
-                  <option value="new">New</option>
-                </SelectInput>
+            <div className="sm:col-span-2">
+              <p className="text-sm font-medium text-ink">Delivery</p>
+              <div className="mt-2 grid grid-cols-3 gap-2">
+                {([
+                  ["free", "Free"],
+                  ["charge", "Charges"],
+                  ["none", "No delivery"],
+                ] as const).map(([value, label]) => (
+                  <button key={value} type="button" onClick={() => patch({ deliveryMode: value })} className={`h-12 rounded-2xl border text-sm ${form.deliveryMode === value ? "border-pine bg-foam text-ink" : "border-line bg-card text-ink-soft"}`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {form.deliveryMode === "charge" ? (
+              <Field label="Delivery charge (AED)">
+                <TextInput inputMode="numeric" value={form.deliveryFee} onChange={(event) => patch({ deliveryFee: digitsOnly(event.target.value) })} placeholder="100" />
               </Field>
             ) : null}
           </div>
-        ) : null}
-
-        {step === 2 && form.type === "RENT" ? (
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Daily price (AED)"><TextInput inputMode="numeric" value={form.dailyPrice} onChange={(event) => patch({ dailyPrice: event.target.value.replace(/[^\d]/g, "") })} /></Field>
-            <Field label="Weekly price (AED)"><TextInput inputMode="numeric" value={form.weeklyPrice} onChange={(event) => patch({ weeklyPrice: event.target.value.replace(/[^\d]/g, "") })} /></Field>
-            <Field label="Monthly price (AED)"><TextInput inputMode="numeric" value={form.monthlyPrice} onChange={(event) => patch({ monthlyPrice: event.target.value.replace(/[^\d]/g, "") })} /></Field>
-            <Field label="Security deposit (AED)"><TextInput inputMode="numeric" value={form.deposit} onChange={(event) => patch({ deposit: event.target.value.replace(/[^\d]/g, "") })} /></Field>
-            <Field label="Minimum rental period"><TextInput value={form.minPeriod} onChange={(event) => patch({ minPeriod: event.target.value })} placeholder="1 day" /></Field>
-            <Field label="Mileage allowance"><TextInput value={form.mileageAllowance} onChange={(event) => patch({ mileageAllowance: event.target.value })} placeholder="250 km/day" /></Field>
-            <Field label="Extra mileage price"><TextInput value={form.extraMileagePrice} onChange={(event) => patch({ extraMileagePrice: event.target.value })} /></Field>
-            <Field label="Insurance"><TextInput value={form.insurance} onChange={(event) => patch({ insurance: event.target.value })} /></Field>
-            <Field label="Driver requirements"><TextInput value={form.driverRequirements} onChange={(event) => patch({ driverRequirements: event.target.value })} /></Field>
-            <Field label="Delivery or pickup"><TextInput value={form.delivery} onChange={(event) => patch({ delivery: event.target.value })} /></Field>
-            <label className="flex items-center gap-2 text-sm text-ink">
-              <input type="checkbox" checked={form.withDriver} onChange={(event) => patch({ withDriver: event.target.checked })} />
-              With driver available
-            </label>
-          </div>
-        ) : null}
-
-        {step === 2 && form.type === "SALE" ? (
-          <div className="grid gap-4">
-            <Field label="Sale price (AED)"><TextInput inputMode="numeric" value={form.salePrice} onChange={(event) => patch({ salePrice: event.target.value.replace(/[^\d]/g, "") })} /></Field>
-            <Field label="Accident history"><TextArea value={form.accidentHistory} onChange={(event) => patch({ accidentHistory: event.target.value })} placeholder="What should a buyer verify?" /></Field>
-            <Field label="Service history"><TextArea value={form.serviceHistory} onChange={(event) => patch({ serviceHistory: event.target.value })} /></Field>
-            <Field label="Warranty"><TextInput value={form.warranty} onChange={(event) => patch({ warranty: event.target.value })} /></Field>
-            <Field label="Registration status"><TextInput value={form.registrationStatus} onChange={(event) => patch({ registrationStatus: event.target.value })} /></Field>
-          </div>
-        ) : null}
-
-        {step === 3 ? (
-          <div className="grid gap-4">
-            <Field label="Area">
-              <SelectInput value={form.areaSlug} onChange={(event) => patch({ areaSlug: event.target.value })}>
-                {Array.from(places.reduce((map, place) => {
-                  const list = map.get(place.emirate) ?? [];
-                  list.push(place);
-                  map.set(place.emirate, list);
-                  return map;
-                }, new Map<string, typeof places>())).map(([emirate, items]) => (
-                  <optgroup key={emirate} label={emirate}>
-                    {items.map((place) => <option key={place.slug} value={place.slug}>{place.area}</option>)}
-                  </optgroup>
-                ))}
-              </SelectInput>
-            </Field>
-            <Field label="Pickup location" hint="Where the customer collects the car. Do not publish a private home address if you would rather meet in public.">
-              <TextInput value={form.pickupLocation} onChange={(event) => patch({ pickupLocation: event.target.value })} />
-            </Field>
-            {form.type === "RENT" ? (
-              <div className="grid gap-4 rounded-3xl border border-line p-4">
-                <label className="flex items-center gap-2 text-sm text-ink">
-                  <input type="checkbox" checked={form.deliveryAvailable} onChange={(event) => patch({ deliveryAvailable: event.target.checked, deliveryScope: event.target.checked ? form.deliveryScope || "areas" : "" })} />
-                  Delivery available
-                </label>
-                {form.deliveryAvailable ? (
-                  <>
-                    <Field label="Delivery coverage">
-                      <SelectInput value={form.deliveryScope || "areas"} onChange={(event) => patch({ deliveryScope: event.target.value })}>
-                        <option value="areas">Selected areas</option>
-                        <option value="dubai">Dubai-wide</option>
-                      </SelectInput>
-                    </Field>
-                    {form.deliveryScope !== "dubai" ? (
-                      <Field label="Delivery areas" hint="Only the areas you actually cover.">
-                        <TextInput value={form.deliveryAreas} onChange={(event) => patch({ deliveryAreas: event.target.value })} placeholder="Dubai Marina, JLT" />
-                      </Field>
-                    ) : null}
-                    <Field label="Delivery fee"><TextInput value={form.deliveryFee} onChange={(event) => patch({ deliveryFee: event.target.value })} placeholder="AED 150, or included" /></Field>
-                    <label className="flex items-center gap-2 text-sm text-ink">
-                      <input type="checkbox" checked={form.airportDelivery} onChange={(event) => patch({ airportDelivery: event.target.checked })} />
-                      Airport delivery
-                    </label>
-                    <Field label="Delivery notes"><TextInput value={form.delivery} onChange={(event) => patch({ delivery: event.target.value })} /></Field>
-                  </>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-
-        {step === 4 ? (
-          <div>
-            <Field label="Photos" hint="Front, rear, side, interior and dashboard. JPG, PNG or WebP. The first photo is the cover.">
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                multiple
-                className="mt-2 block w-full text-sm"
-                onChange={(event) => {
-                  const files = [...(event.target.files ?? [])];
-                  event.target.value = "";
-                  if (!files.length) return;
-                  setUploading(true);
-                  void Promise.all(files.map((file) => compress(file)))
-                    .then((urls) => {
-                      patch({
-                        photos: [...form.photos, ...urls.map((url) => ({ url, alt: `${form.make} ${form.model}`.trim() }))].slice(0, 8),
-                      });
-                    })
-                    .catch((error: unknown) => toast.error(error instanceof Error ? error.message : "Upload failed"))
-                    .finally(() => setUploading(false));
-                }}
-              />
-            </Field>
-            {uploading ? <p className="mt-3 text-sm text-muted">Preparing photos…</p> : null}
-            <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {form.photos.map((photo, index) => (
-                <li key={photo.url.slice(0, 48) + index} className="overflow-hidden rounded-2xl border border-line bg-card">
-                  <img src={photo.url} alt={photo.alt} className="aspect-photo w-full object-cover" />
-                  <div className="flex gap-1 p-2 text-xs">
-                    <button type="button" disabled={index === 0} onClick={() => {
-                      const photos = [...form.photos];
-                      const [item] = photos.splice(index, 1);
-                      if (item) photos.unshift(item);
-                      patch({ photos });
-                    }}>Cover</button>
-                    <button type="button" onClick={() => patch({ photos: form.photos.filter((_, i) => i !== index) })}>Remove</button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
-
-        {step === 5 ? (
-          <Field label="Description" hint="Describe the vehicle, rental conditions, features, mileage allowance, deposit and anything customers should know.">
-            <TextArea rows={8} value={form.description} onChange={(event) => patch({ description: event.target.value })} placeholder="Describe the vehicle, rental conditions, features, mileage allowance, deposit and anything customers should know." />
+        ) : (
+          <Field label="Sale price (AED)">
+            <TextInput inputMode="numeric" value={form.salePrice} onChange={(event) => patch({ salePrice: digitsOnly(event.target.value) })} placeholder="150000" />
           </Field>
-        ) : null}
+        )}
 
-        {step === 6 ? (
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Account type">
-              <SelectInput value={form.accountType} onChange={(event) => patch({ accountType: event.target.value })}>
-                {ACCOUNT_TYPES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-              </SelectInput>
-            </Field>
-            <Field label="Your name"><TextInput value={form.fullName} onChange={(event) => patch({ fullName: event.target.value })} /></Field>
-            {form.accountType !== "individual" ? (
-              <Field label="Company name"><TextInput value={form.companyName} onChange={(event) => patch({ companyName: event.target.value })} /></Field>
-            ) : null}
-            <Field label="Sales person"><TextInput value={form.salespersonName} onChange={(event) => patch({ salespersonName: event.target.value })} /></Field>
-            <Field label="Email"><TextInput type="email" value={form.email} onChange={(event) => patch({ email: event.target.value })} /></Field>
-            <Field label="WhatsApp" hint="Include the country code, for example 9715…"><TextInput value={form.whatsapp} onChange={(event) => patch({ whatsapp: event.target.value })} /></Field>
-            <Field label="Phone"><TextInput value={form.phone} onChange={(event) => patch({ phone: event.target.value })} /></Field>
-            <Field label="Preferred contact">
-              <SelectInput value={form.preferredContact} onChange={(event) => patch({ preferredContact: event.target.value })}>
-                <option value="whatsapp">WhatsApp</option>
-                <option value="phone">Phone</option>
-              </SelectInput>
-            </Field>
-            <Field label="Website"><TextInput value={form.website} onChange={(event) => patch({ website: event.target.value })} /></Field>
-            <Field label="Address"><TextInput value={form.address} onChange={(event) => patch({ address: event.target.value })} /></Field>
-            <div className="sm:col-span-2">
-              <Field label="About the advertiser"><TextArea value={form.companyDescription} onChange={(event) => patch({ companyDescription: event.target.value })} /></Field>
-            </div>
-          </div>
-        ) : null}
-
-        {step === 7 ? (
-          <div>
-            <p className="mb-4 text-sm text-ink-soft">
-              {site.moderation === "manual"
-                ? "New listings and edits are reviewed before they go live."
-                : "Listings publish immediately with the current site setting."}
-            </p>
-            <div className="max-w-sm">
-              <ListingCard listing={preview} />
-            </div>
-            {errors.length ? (
-              <ul className="mt-4 list-disc space-y-1 pl-5 text-sm text-danger">
-                {errors.map((error) => <li key={error}>{error}</li>)}
-              </ul>
-            ) : null}
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Button variant="line" disabled={busy} onClick={() => void submit("draft")}>Save draft</Button>
-              <Button disabled={busy} onClick={() => void submit("publish")}>{busy ? "Saving…" : "Publish listing"}</Button>
-            </div>
-          </div>
-        ) : null}
-      </div>
-
-      {step < 7 ? (
-        <div className="mt-8 flex justify-between">
-          <Button variant="line" disabled={step === 0} onClick={() => setStep((n) => Math.max(0, n - 1))}>Back</Button>
-          <Button onClick={() => setStep((n) => Math.min(7, n + 1))}>Continue</Button>
+        <div>
+          <Field label="Car photos" hint="A few photos are enough. The first one is the cover. JPG, PNG or WebP.">
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              className="mt-2 block w-full text-sm"
+              onChange={(event) => {
+                const files = [...(event.target.files ?? [])];
+                event.target.value = "";
+                if (!files.length) return;
+                setUploading(true);
+                void Promise.all(files.map((file) => compress(file)))
+                  .then((urls) => {
+                    setForm((current) => ({
+                      ...current,
+                      photos: [...current.photos, ...urls.map((url) => ({ url, alt: `${current.make} ${current.model}`.trim() }))].slice(0, 8),
+                    }));
+                  })
+                  .catch((error: unknown) => toast.error(error instanceof Error ? error.message : "Upload failed"))
+                  .finally(() => setUploading(false));
+              }}
+            />
+          </Field>
+          {uploading ? <p className="mt-3 text-sm text-muted">Preparing photos…</p> : null}
+          <ul className="mt-4 grid grid-cols-3 gap-3">
+            {form.photos.map((photo, index) => (
+              <li key={photo.url.slice(0, 48) + index} className="overflow-hidden rounded-2xl border border-line bg-card">
+                <img src={photo.url} alt={photo.alt} className="aspect-photo w-full object-cover" />
+                <button type="button" className="w-full px-2 py-2 text-xs text-ink" onClick={() => patch({ photos: form.photos.filter((_, i) => i !== index) })}>Remove</button>
+              </li>
+            ))}
+          </ul>
         </div>
-      ) : null}
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Account type">
+            <SelectInput value={form.accountType} onChange={(event) => patch({ accountType: event.target.value })}>
+              {ADVERTISER_TYPES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+            </SelectInput>
+          </Field>
+          {form.accountType === "individual" ? (
+            <Field label="Your name">
+              <TextInput value={form.fullName} onChange={(event) => patch({ fullName: event.target.value })} />
+            </Field>
+          ) : (
+            <Field label="Dealer or company name">
+              <TextInput value={form.companyName} onChange={(event) => patch({ companyName: event.target.value })} />
+            </Field>
+          )}
+          <Field label="WhatsApp" hint="Country code, for example 9715…">
+            <TextInput value={form.whatsapp} onChange={(event) => patch({ whatsapp: event.target.value })} placeholder="971501234567" />
+          </Field>
+        </div>
+
+        {errors.length ? (
+          <ul className="list-disc space-y-1 pl-5 text-sm text-danger">
+            {errors.map((error) => <li key={error}>{error}</li>)}
+          </ul>
+        ) : null}
+
+        <p className="text-sm text-ink-soft">
+          {site.moderation === "manual" ? "New listings are reviewed before they go live." : "Listings publish immediately."}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="line" disabled={busy} onClick={() => void submit("draft")}>Save draft</Button>
+          <Button disabled={busy} onClick={() => void submit("publish")}>{busy ? "Saving…" : "Publish listing"}</Button>
+        </div>
+      </div>
     </div>
   );
 }
