@@ -31,7 +31,18 @@ function Home() {
   const [model, setModel] = useState("");
   const [area, setArea] = useState("");
   const [price, setPrice] = useState("");
-  const popular = data.places.filter((place) => place.popular);
+  const popularCars = [
+    { label: "Mercedes G63", make: "Mercedes-Benz", model: "G-Class" },
+    { label: "Lamborghini Urus", make: "Lamborghini", model: "Urus" },
+    { label: "Range Rover", make: "Range Rover", model: "" },
+    { label: "Porsche 911", make: "Porsche", model: "911" },
+    { label: "Mercedes GLE", make: "Mercedes-Benz", model: "GLE" },
+    { label: "BMW X5", make: "BMW", model: "X5" },
+    { label: "Ferrari Roma", make: "Ferrari", model: "Roma" },
+    { label: "Land Cruiser", make: "Toyota", model: "Land Cruiser" },
+    { label: "Nissan Patrol", make: "Nissan", model: "Patrol" },
+    { label: "Rolls-Royce", make: "Rolls-Royce", model: "" },
+  ];
 
   return (
     <div>
@@ -118,9 +129,9 @@ function Home() {
             </button>
           </div>
           <div className="mt-4 flex gap-2 overflow-auto pb-1">
-            {popular.map((place) => (
-              <Link key={place.slug} to="/locations/$slug" params={{ slug: place.slug }} className="shrink-0 rounded-full bg-sand px-3 py-2 text-sm text-ink">
-                {place.area}
+            {popularCars.map((car) => (
+              <Link key={car.label} to="/rent" search={{ make: car.make, model: car.model || undefined }} className="shrink-0 rounded-full bg-sand px-3 py-2 text-sm text-ink">
+                {car.label}
               </Link>
             ))}
           </div>
