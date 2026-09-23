@@ -97,7 +97,7 @@ export function Shell({ children }: { children: ReactNode }) {
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-card focus:px-4 focus:py-2">
         Skip to content
       </a>
-      <header className="sticky top-0 z-30 border-b border-line bg-paper/90 backdrop-blur">
+      <header className="sticky top-0 z-30 border-b border-line bg-paper lg:bg-paper/90 lg:backdrop-blur">
         <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4">
           <Link to="/" className="flex min-w-0 items-center gap-2">
             {site.logoUrl ? <img src={site.logoUrl} alt="" className="h-9 w-9 shrink-0 rounded-xl object-cover" /> : <Mark name={site.name} />}
@@ -160,7 +160,7 @@ export function Shell({ children }: { children: ReactNode }) {
       </header>
 
       {searchOpen ? (
-        <div className="fixed inset-0 z-40 bg-ink/40" onClick={() => setSearchOpen(false)}>
+        <div className="fixed inset-0 z-50 bg-ink/40" onClick={() => setSearchOpen(false)}>
           <div className="mx-auto mt-20 max-w-lg rounded-3xl bg-card p-4" role="dialog" aria-label="Search" onClick={(event) => event.stopPropagation()}>
             <p className="text-sm font-medium text-ink">What are you looking for?</p>
             <div className="mt-3 grid grid-cols-2 gap-2">
@@ -227,16 +227,20 @@ export function Shell({ children }: { children: ReactNode }) {
         </div>
       </footer>
 
-      <nav className="fixed inset-x-0 bottom-0 z-30 grid h-16 grid-cols-5 border-t border-line bg-card lg:hidden" aria-label="Mobile">
+      <nav
+        className="fixed inset-x-0 bottom-0 z-40 grid transform-gpu grid-cols-5 border-t border-line bg-card pb-[env(safe-area-inset-bottom)] touch-manipulation lg:hidden"
+        style={{ height: "calc(4rem + env(safe-area-inset-bottom))" }}
+        aria-label="Mobile"
+      >
         <Tab to="/rent" icon={<CarFront className="size-5" />} label="Rent" />
         <Tab to="/buy" icon={<Tag className="size-5" />} label="Buy" />
         {user ? (
-          <Link to="/post" className="flex flex-col items-center justify-center gap-1 text-xs">
+          <Link to="/post" className="flex h-full w-full flex-col items-center justify-center gap-1 text-xs text-ink">
             <span className="grid h-9 w-9 place-items-center rounded-full bg-pine text-paper"><Plus className="size-5" /></span>
             Post
           </Link>
         ) : (
-          <Link to="/login" search={{ redirect: "/post" }} className="flex flex-col items-center justify-center gap-1 text-xs">
+          <Link to="/login" search={{ redirect: "/post" }} className="flex h-full w-full flex-col items-center justify-center gap-1 text-xs text-ink">
             <span className="grid h-9 w-9 place-items-center rounded-full bg-pine text-paper"><Plus className="size-5" /></span>
             Post
           </Link>
@@ -244,7 +248,7 @@ export function Shell({ children }: { children: ReactNode }) {
         <Tab to="/account" search={{ section: "saved" }} icon={<Heart className="size-5" />} label="Saved" />
         <Tab to={user ? "/account" : "/login"} search={user ? { section: "listings" } : { redirect: "/account" }} icon={<UserRound className="size-5" />} label="Account" />
       </nav>
-      <div className="h-16 lg:hidden" />
+      <div className="lg:hidden" style={{ height: "calc(4rem + env(safe-area-inset-bottom))" }} />
 
       {!cookies ? (
         <div className="fixed inset-x-3 bottom-20 z-30 rounded-3xl border border-line bg-card p-4 shadow-sm lg:bottom-4 lg:left-auto lg:right-4 lg:max-w-sm">
@@ -331,7 +335,7 @@ function Tab({
   label: string;
 }) {
   return (
-    <Link to={to} search={search} className="flex flex-col items-center justify-center gap-1 text-xs text-muted" activeProps={{ className: "flex flex-col items-center justify-center gap-1 text-xs text-pine" }}>
+    <Link to={to} search={search} className="flex h-full w-full touch-manipulation flex-col items-center justify-center gap-1 text-xs text-muted" activeProps={{ className: "flex h-full w-full touch-manipulation flex-col items-center justify-center gap-1 text-xs text-pine" }}>
       {icon}
       {label}
     </Link>
