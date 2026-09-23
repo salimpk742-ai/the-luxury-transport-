@@ -106,11 +106,13 @@ const allowedHosts: string[] = [
     "[::1]",
   ]),
 ];
-const baseURL = {
-  allowedHosts,
-  protocol: "auto" as const,
-  fallback: explicitBaseURL ?? "http://localhost:8080",
-};
+const baseURL = explicitBaseURL
+  ? explicitBaseURL
+  : {
+      allowedHosts,
+      protocol: "auto" as const,
+      fallback: "http://localhost:8080",
+    };
 
 const trustedOrigins: string[] = [
   ...allowedHosts.flatMap((host) => [`https://${host}`, `http://${host}`]),
@@ -161,6 +163,10 @@ export const auth = betterAuth({
   // one user. trustedProviders is only "google" (plus the preview gate).
   account: {
     encryptOAuthTokens: true,
+    // The state is still saved in the database and checked. The extra cookie
+    // check fails on the return from Google in some browsers, which looked
+    // like an invalid login.
+    skipStateCookieCheck: true,
     accountLinking: {
       enabled: true,
       trustedProviders: ["google", GATE_PROVIDER_ID],

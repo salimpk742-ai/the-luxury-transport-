@@ -11,22 +11,26 @@ export const Route = createFileRoute("/login")({
   validateSearch: (search) => {
     const redirect = typeof search.redirect === "string" && search.redirect.startsWith("/") && !search.redirect.startsWith("//") ? search.redirect : "/account";
     const error = typeof search.error === "string" ? search.error : "";
-    return error ? { redirect, error } : { redirect };
+    const detail = typeof search.error_description === "string" ? search.error_description.slice(0, 180) : "";
+    return error ? { redirect, error, detail } : { redirect };
   },
   head: () => noindexHead("Sign in"),
   component: LoginPage,
 });
 
-function googleErrorMessage(code: string): string {
+function googleErrorMessage(code: string, detail = ""): string {
   if (!code) return "";
-  if (code === "access_denied") return "Google sign-in was cancelled.";
-  if (code === "state_mismatch") return "That sign-in expired. Press Continue with Google again.";
-  if (code === "invalid_code" || code === "invalid_client") return "Google rejected the app credentials. The client secret in Vercel must be the secret from this same Google client.";
-  return `Google sign-in failed (${code.replaceAll("_", " ")}).`;
+  if (code === "access_denied" || code === "invalid_request") {
+    return "Google blocked this sign-in. In Google Cloud, open Audience and add your Gmail address under Test users, then try again.";
+  }
+  if (code === "state_mismatch" || code === "state_invalid") return "That sign-in expired. Press Continue with Google again.";
+  if (code === "invalid_code" || code === "invalid_client") return "Google rejected the sign-in. Press Continue with Google once more.";
+  const extra = detail ? ` ${detail}` : "";
+  return `Google sign-in failed (${code.replaceAll("_", " ")}).${extra}`;
 }
 
 function LoginPage() {
-  const { redirect, error: errorFromUrl } = Route.useSearch();
+  const { redirect, error: errorFromUrl, detail } = Route.useSearch();
   const { site } = useRouteContext({ from: "__root__" });
   const { user, isPending } = useCurrentUserState();
   const navigate = useNavigate();
@@ -34,7 +38,7 @@ function LoginPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState(() => googleErrorMessage(errorFromUrl ?? ""));
+  const [error, setError] = useState(() => googleErrorMessage(errorFromUrl ?? "", detail ?? ""));
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -118,7 +122,8 @@ function LoginPage() {
                   ? await authClient.signUp.email({ email, password, name: name || email.split("@")[0] || "Advertiser" })
                   : await authClient.signIn.email({ email, password });
                 if (result.error) {
-                  setError(result.error.message || "Could not sign in.");
+                  const message = result.error.message || "Could not sign in.";
+                  setError(message === "Invalid email or password" ? "That email and password do not match. For Gmail, use Continue with Google instead." : message);
                   setBusy(false);
                   return;
                 }
