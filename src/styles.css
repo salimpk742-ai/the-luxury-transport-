@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Fraunces", Georgia, "Times New Roman", serif;
+  --color-ink: #14221c;
+  --color-ink-soft: #3e5148;
+  --color-muted: #55635c;
+  --color-line: #e3dfd6;
+  --color-paper: #f3f0ea;
+  --color-card: #fffcf8;
+  --color-foam: #e5f1ec;
+  --color-pine: #0f3d34;
+  --color-pine-deep: #0b2e28;
+  --color-sand: #efe6d6;
+  --color-whatsapp: #0e6b56;
+  --color-danger: #8f2f2f;
+  --color-warn: #8a5a12;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    text-wrap: pretty;
+  }
+
+  h1,
+  h2 {
+    font-family: var(--font-display);
+    font-weight: 560;
+    text-wrap: balance;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-pine);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: var(--color-foam);
+    color: var(--color-ink);
+  }
+}
+
+@utility aspect-photo {
+  aspect-ratio: 3 / 2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
