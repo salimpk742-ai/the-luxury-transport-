@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Navigate, useNavigate, useRouteContext } from "@tanstack/react-router";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { ACCOUNT_TYPES, BODY_TYPES, MAKES, MODELS, YEARS } from "@/lib/catalog";
@@ -251,7 +251,7 @@ async function compress(file: File) {
   const bitmap = await createImageBitmap(file).catch(() => null);
   if (!bitmap) throw new Error("Could not read that photo.");
   try {
-    const max = 960;
+    const max = 800;
     const scale = Math.min(1, max / Math.max(bitmap.width, bitmap.height));
     const canvas = document.createElement("canvas");
     canvas.width = Math.max(1, Math.round(bitmap.width * scale));
@@ -291,12 +291,11 @@ function listingDescription(form: FormState) {
 
 export function Wizard({ listingId }: { listingId?: number }) {
   const { user, isPending } = useCurrentUserState();
-  if (isPending) return <LoadingBlock label="Loading your account" />;
-  if (!user) return <Navigate to="/login" search={{ redirect: listingId ? `/post/${listingId}` : "/post" }} />;
-  return <WizardForm listingId={listingId} />;
+  if (!isPending && !user) return <Navigate to="/login" search={{ redirect: listingId ? `/post/${listingId}` : "/post" }} />;
+  return <WizardForm listingId={listingId} canSave={!isPending && !!user} />;
 }
 
-function WizardForm({ listingId }: { listingId?: number }) {
+function WizardForm({ listingId, canSave }: { listingId?: number; canSave: boolean }) {
   const { site } = useRouteContext({ from: "__root__" });
   const navigate = useNavigate();
   const [form, setForm] = useState<FormState>(blank);
@@ -306,6 +305,7 @@ function WizardForm({ listingId }: { listingId?: number }) {
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let cancel = false;
@@ -351,6 +351,11 @@ function WizardForm({ listingId }: { listingId?: number }) {
     setBusy(true);
     setErrors([]);
     const whatsapp = uaeWhatsapp(form.whatsapp);
+    if (!canSave) {
+      setErrors(["Still checking your sign-in. Try again in a moment."]);
+      setBusy(false);
+      return;
+    }
     if (intent === "publish" && !/^971\d{8,9}$/.test(whatsapp)) {
       setErrors(["WhatsApp must be a UAE number starting with +971."]);
       setBusy(false);
@@ -539,15 +544,22 @@ function WizardForm({ listingId }: { listingId?: number }) {
         <div>
           <p className="text-sm font-medium text-ink">Car photos</p>
           <p className="mt-1 text-xs text-muted">A few photos are enough. The first one is the cover. JPG, PNG or WebP.</p>
-          <label className="mt-3 inline-flex h-12 cursor-pointer items-center justify-center rounded-full bg-pine px-5 text-sm font-medium text-paper">
+          <button
+            type="button"
+            disabled={uploading || form.photos.length >= 8}
+            onClick={() => fileRef.current?.click()}
+            className="mt-3 inline-flex h-12 items-center justify-center rounded-full bg-pine px-5 text-sm font-medium text-paper disabled:opacity-60"
+          >
             {uploading ? "Adding photos…" : "Add photos"}
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              multiple
-              className="sr-only"
-              disabled={uploading}
-              onChange={(event) => {
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            multiple
+            className="sr-only"
+            disabled={uploading}
+            onChange={(event) => {
                 const files = [...(event.target.files ?? [])];
                 event.target.value = "";
                 if (!files.length) return;
@@ -563,8 +575,7 @@ function WizardForm({ listingId }: { listingId?: number }) {
                   .catch((error: unknown) => toast.error(error instanceof Error ? error.message : "Upload failed"))
                   .finally(() => setUploading(false));
               }}
-            />
-          </label>
+          />
           {uploading ? <p className="mt-3 text-sm text-muted">Preparing photos…</p> : null}
           <ul className="mt-4 grid grid-cols-3 gap-3">
             {form.photos.map((photo, index) => (
@@ -616,8 +627,8 @@ function WizardForm({ listingId }: { listingId?: number }) {
           {site.moderation === "manual" ? "New listings are reviewed before they go live." : "Listings publish immediately."}
         </p>
         <div className="flex flex-wrap gap-2">
-          <Button variant="line" disabled={busy} onClick={() => void submit("draft")}>Save draft</Button>
-          <Button disabled={busy} onClick={() => void submit("publish")}>{busy ? "Saving…" : "Publish listing"}</Button>
+          <Button variant="line" disabled={busy || !canSave} onClick={() => void submit("draft")}>Save draft</Button>
+          <Button disabled={busy || !canSave} onClick={() => void submit("publish")}>{busy ? "Saving…" : "Publish listing"}</Button>
         </div>
       </div>
     </div>
