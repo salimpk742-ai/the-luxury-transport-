@@ -10,14 +10,23 @@ import { noindexHead } from "@/lib/seo";
 export const Route = createFileRoute("/login")({
   validateSearch: (search) => {
     const redirect = typeof search.redirect === "string" && search.redirect.startsWith("/") && !search.redirect.startsWith("//") ? search.redirect : "/account";
-    return { redirect };
+    const error = typeof search.error === "string" ? search.error : "";
+    return { redirect, error };
   },
   head: () => noindexHead("Sign in"),
   component: LoginPage,
 });
 
+function googleErrorMessage(code: string): string {
+  if (!code) return "";
+  if (code === "access_denied") return "Google sign-in was cancelled.";
+  if (code === "state_mismatch") return "That sign-in expired. Press Continue with Google again.";
+  if (code === "invalid_code" || code === "invalid_client") return "Google rejected the app credentials. The client secret in Vercel must be the secret from this same Google client.";
+  return `Google sign-in failed (${code.replaceAll("_", " ")}).`;
+}
+
 function LoginPage() {
-  const { redirect } = Route.useSearch();
+  const { redirect, error: errorFromUrl } = Route.useSearch();
   const { site } = useRouteContext({ from: "__root__" });
   const { user, isPending } = useCurrentUserState();
   const navigate = useNavigate();
@@ -25,7 +34,7 @@ function LoginPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState(() => googleErrorMessage(errorFromUrl));
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -76,7 +85,7 @@ function LoginPage() {
             type="button"
             onClick={() => {
               setError("");
-              void signIn("google", { callbackURL: redirect }).catch((err: unknown) => {
+              void signIn("google", { callbackURL: redirect, errorCallbackURL: "/login" }).catch((err: unknown) => {
                 setError(err instanceof Error ? err.message : "Google sign-in failed");
               });
             }}
