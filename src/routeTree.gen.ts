@@ -28,7 +28,6 @@ import { Route as TermsRouteImport } from './routes/terms'
 import { Route as TermsAndConditionsRouteImport } from './routes/terms-and-conditions'
 import { Route as AccountIndexRouteImport } from './routes/account/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
-import { Route as ApiGoogleCheckRouteImport } from './routes/api/google-check'
 import { Route as BuyIndexRouteImport } from './routes/buy/index'
 import { Route as DealerSlugRouteImport } from './routes/dealer/$slug'
 import { Route as DubaiIntentRouteImport } from './routes/dubai/$intent'
@@ -142,11 +141,6 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/admin/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiGoogleCheckRoute = ApiGoogleCheckRouteImport.update({
-  id: '/api/google-check',
-  path: '/api/google-check',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const BuyIndexRoute = BuyIndexRouteImport.update({
   id: '/buy/',
   path: '/buy/',
@@ -251,7 +245,6 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
   '/terms-and-conditions': typeof TermsAndConditionsRoute
-  '/api/google-check': typeof ApiGoogleCheckRoute
   '/dealer/$slug': typeof DealerSlugRoute
   '/dubai/$intent': typeof DubaiIntentRoute
   '/locations/$slug': typeof LocationsSlugRoute
@@ -290,7 +283,6 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
   '/terms-and-conditions': typeof TermsAndConditionsRoute
-  '/api/google-check': typeof ApiGoogleCheckRoute
   '/dealer/$slug': typeof DealerSlugRoute
   '/dubai/$intent': typeof DubaiIntentRoute
   '/locations/$slug': typeof LocationsSlugRoute
@@ -330,7 +322,6 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
   '/terms-and-conditions': typeof TermsAndConditionsRoute
-  '/api/google-check': typeof ApiGoogleCheckRoute
   '/dealer/$slug': typeof DealerSlugRoute
   '/dubai/$intent': typeof DubaiIntentRoute
   '/locations/$slug': typeof LocationsSlugRoute
@@ -371,7 +362,6 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/terms'
     | '/terms-and-conditions'
-    | '/api/google-check'
     | '/dealer/$slug'
     | '/dubai/$intent'
     | '/locations/$slug'
@@ -410,7 +400,6 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/terms'
     | '/terms-and-conditions'
-    | '/api/google-check'
     | '/dealer/$slug'
     | '/dubai/$intent'
     | '/locations/$slug'
@@ -449,7 +438,6 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/terms'
     | '/terms-and-conditions'
-    | '/api/google-check'
     | '/dealer/$slug'
     | '/dubai/$intent'
     | '/locations/$slug'
@@ -489,7 +477,6 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TermsRoute: typeof TermsRoute
   TermsAndConditionsRoute: typeof TermsAndConditionsRoute
-  ApiGoogleCheckRoute: typeof ApiGoogleCheckRoute
   DealerSlugRoute: typeof DealerSlugRoute
   DubaiIntentRoute: typeof DubaiIntentRoute
   LocationsSlugRoute: typeof LocationsSlugRoute
@@ -645,13 +632,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/google-check': {
-      id: '/api/google-check'
-      path: '/api/google-check'
-      fullPath: '/api/google-check'
-      preLoaderRoute: typeof ApiGoogleCheckRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/buy/': {
       id: '/buy/'
       path: '/buy'
@@ -804,7 +784,6 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   TermsRoute: TermsRoute,
   TermsAndConditionsRoute: TermsAndConditionsRoute,
-  ApiGoogleCheckRoute: ApiGoogleCheckRoute,
   DealerSlugRoute: DealerSlugRoute,
   DubaiIntentRoute: DubaiIntentRoute,
   LocationsSlugRoute: LocationsSlugRoute,
