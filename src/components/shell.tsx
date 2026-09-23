@@ -42,15 +42,32 @@ export function Shell({ children }: { children: ReactNode }) {
     setCookies(window.localStorage.getItem("marq-cookie") === "1");
   }, []);
 
+  const userId = user?.id ?? "";
+  const userName = user?.displayName ?? "";
+  const userEmail = user?.primaryEmail ?? "";
+  const devUser = user?.isDevFallback ?? false;
+
   useEffect(() => {
-    if (!user || user.isDevFallback) return;
-    void ensureProfile({ data: { name: user.displayName ?? "", email: user.primaryEmail ?? "" } })
-      .then(setProfile)
-      .catch(() => setProfile(null));
+    if (!userId || devUser) return;
+    let cancel = false;
+    void ensureProfile({ data: { name: userName, email: userEmail } })
+      .then((next) => {
+        if (!cancel) setProfile(next);
+      })
+      .catch(() => {
+        if (!cancel) setProfile(null);
+      });
     void getSavedIds()
-      .then(setSaved)
-      .catch(() => setSaved([]));
-  }, [user]);
+      .then((ids) => {
+        if (!cancel) setSaved(ids);
+      })
+      .catch(() => {
+        if (!cancel) setSaved([]);
+      });
+    return () => {
+      cancel = true;
+    };
+  }, [userId, devUser, userName, userEmail]);
 
   useEffect(() => {
     setMenu(false);
@@ -228,19 +245,19 @@ export function Shell({ children }: { children: ReactNode }) {
       </footer>
 
       <nav
-        className="fixed inset-x-0 bottom-0 z-40 grid transform-gpu grid-cols-5 border-t border-line bg-card pb-[env(safe-area-inset-bottom)] touch-manipulation lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-line bg-card pb-[env(safe-area-inset-bottom)] touch-manipulation lg:hidden"
         style={{ height: "calc(4rem + env(safe-area-inset-bottom))" }}
         aria-label="Mobile"
       >
         <Tab to="/rent" icon={<CarFront className="size-5" />} label="Rent" />
         <Tab to="/buy" icon={<Tag className="size-5" />} label="Buy" />
         {user ? (
-          <Link to="/post" className="flex h-full w-full flex-col items-center justify-center gap-1 text-xs text-ink">
+          <Link preload={false} to="/post" className="flex h-full w-full flex-col items-center justify-center gap-1 text-xs text-ink">
             <span className="grid h-9 w-9 place-items-center rounded-full bg-pine text-paper"><Plus className="size-5" /></span>
             Post
           </Link>
         ) : (
-          <Link to="/login" search={{ redirect: "/post" }} className="flex h-full w-full flex-col items-center justify-center gap-1 text-xs text-ink">
+          <Link preload={false} to="/login" search={{ redirect: "/post" }} className="flex h-full w-full flex-col items-center justify-center gap-1 text-xs text-ink">
             <span className="grid h-9 w-9 place-items-center rounded-full bg-pine text-paper"><Plus className="size-5" /></span>
             Post
           </Link>
@@ -335,7 +352,7 @@ function Tab({
   label: string;
 }) {
   return (
-    <Link to={to} search={search} className="flex h-full w-full touch-manipulation flex-col items-center justify-center gap-1 text-xs text-muted" activeProps={{ className: "flex h-full w-full touch-manipulation flex-col items-center justify-center gap-1 text-xs text-pine" }}>
+    <Link preload={false} to={to} search={search} className="flex h-full w-full touch-manipulation flex-col items-center justify-center gap-1 px-1 text-xs text-muted" activeProps={{ className: "flex h-full w-full touch-manipulation flex-col items-center justify-center gap-1 px-1 text-xs text-pine" }}>
       {icon}
       {label}
     </Link>

@@ -9,7 +9,7 @@ export function getRouter() {
     defaultErrorComponent: AppErrorComponent,
     context: { site: defaultSite },
     scrollRestoration: true,
-    defaultPreload: "intent",
+    defaultPreload: false,
   });
 }
 

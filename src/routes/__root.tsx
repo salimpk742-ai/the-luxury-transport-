@@ -9,8 +9,19 @@ import { defaultSite, type SiteConfig } from "@/lib/site";
 import { homeDescription, homeTitle } from "@/lib/seo";
 import appCss from "../styles.css?url";
 
+let browserSite: SiteConfig | null = null;
+
 export const Route = createRootRouteWithContext<{ site: SiteConfig }>()({
-  beforeLoad: async () => ({ site: await getSite() }),
+  beforeLoad: async () => {
+    if (typeof window !== "undefined" && browserSite) return { site: browserSite };
+    try {
+      const site = await getSite();
+      if (typeof window !== "undefined") browserSite = site;
+      return { site };
+    } catch {
+      return { site: defaultSite };
+    }
+  },
   head: ({ matches }) => {
     const site = (matches[0]?.context as { site?: SiteConfig } | undefined)?.site ?? defaultSite;
     return {

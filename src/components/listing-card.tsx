@@ -54,7 +54,7 @@ export function ListingCard({ listing }: { listing: Listing }) {
           aria-pressed={saved}
           aria-label={saved ? "Remove saved car" : "Save car"}
           onClick={() => shell.toggleSave(listing.id)}
-          className="absolute right-3 top-3 grid h-11 w-11 place-items-center rounded-full bg-card text-ink"
+          className="absolute right-3 top-3 z-10 grid h-11 w-11 touch-manipulation place-items-center rounded-full bg-card text-ink"
         >
           <Heart className={cn("size-5", saved && "fill-pine text-pine")} />
         </button>
