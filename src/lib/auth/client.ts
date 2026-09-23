@@ -1,7 +1,5 @@
-import { genericOAuthClient } from "better-auth/client/plugins";
 import { createAuthClient } from "better-auth/react";
 import { runPreSignInSignOut, runSignOut } from "../../../scripts/sign-out-plan.mjs";
-import { GROK_PROVIDERS } from "./providers";
 
 /**
  * Better Auth client for this React SPA (browser-side).
@@ -18,7 +16,6 @@ import { GROK_PROVIDERS } from "./providers";
  * the visitor stays signed in.
  */
 export const authClient = createAuthClient({
-  plugins: [genericOAuthClient()],
   fetchOptions: {
     onRequest(ctx) {
       const token = getBearerToken();
@@ -36,9 +33,6 @@ export const authClient = createAuthClient({
  * when deployed (injected per-app client).
  */
 export const authEnabled = import.meta.env.VITE_AUTH_ENABLED !== "false";
-
-/** The upstream providers to render sign-in buttons for. */
-export { GROK_PROVIDERS };
 
 // ── Live-preview bearer token ────────────────────────────────────────────────
 // The embedded preview iframe has partitioned cookies, so we keep the session's
@@ -83,18 +77,17 @@ function inLivePreview(): boolean {
 type PopupMessage = { source: "grok-auth-popup"; token: string | null; error?: string };
 
 /**
- * Start sign-in with one upstream provider (`providerId` from `GROK_PROVIDERS`),
- * federating through the Grok auth broker.
+ * Start Google sign-in (`provider` is Better Auth's built-in `"google"`).
  *
  * - **Live preview** (`*.grok-sandbox.com` iframe): opens a POPUP to
- *   `/auth/popup`, served by the template Vite plugin (see `vite.config.ts` +
- *   `popup.server.ts`) — 302s to the broker/upstream login (no app chrome) and,
- *   on return, posts the session bearer token back. We store it and refresh the
- *   session; no top-level navigation of the iframe to the broker.
- * - **Deployed** (and local non-iframe): a normal full-page redirect into the broker.
+ *   `/auth/popup`, which starts `signInSocial` (no app chrome) and, on return,
+ *   posts the session bearer token back.
+ * - **Deployed** (and local non-iframe): a normal full-page redirect to Google.
+ *   With `BETTER_AUTH_URL=https://theluxurycars.com` the redirect URI is
+ *   `https://theluxurycars.com/api/auth/callback/google`.
  *
- * Either way it clears any existing local session FIRST so switching providers
- * actually switches identity.
+ * Either way it clears any existing local session FIRST so a new sign-in
+ * replaces the previous one.
  */
 export async function signIn(
   providerId: string,
@@ -143,8 +136,8 @@ export async function signIn(
     return;
   }
 
-  const { data, error } = await authClient.signIn.oauth2({
-    providerId,
+  const { data, error } = await authClient.signIn.social({
+    provider: providerId,
     callbackURL,
     errorCallbackURL,
   });

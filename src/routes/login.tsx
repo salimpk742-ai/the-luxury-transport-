@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, useRouteContext } from "@tanstack/react-router";
 import { useState } from "react";
-import { GROK_PROVIDERS, authClient, signIn } from "@/lib/auth/client";
+import { authClient, signIn } from "@/lib/auth/client";
 import { emailAndPasswordEnabled } from "@/lib/auth/email-password";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { ensureProfile, recordLogin } from "@/lib/marketplace/fns";
@@ -72,16 +72,19 @@ function LoginPage() {
           </div>
         ) : null}
         <div className="space-y-2">
-          {GROK_PROVIDERS.map((provider) => (
-            <button
-              key={provider.providerId}
-              type="button"
-              onClick={() => void signIn(provider.providerId, { callbackURL: redirect })}
-              className="flex h-12 w-full items-center justify-center rounded-full border border-line bg-paper text-sm font-medium"
-            >
-              Continue with {provider.label}
-            </button>
-          ))}
+          <button
+            type="button"
+            onClick={() => {
+              setError("");
+              void signIn("google", { callbackURL: redirect }).catch((err: unknown) => {
+                setError(err instanceof Error ? err.message : "Google sign-in failed");
+              });
+            }}
+            className="flex h-12 w-full items-center justify-center rounded-full border border-line bg-paper text-sm font-medium"
+          >
+            Continue with Google
+          </button>
+          {error && !emailAndPasswordEnabled ? <p className="text-sm text-danger" role="alert">{error}</p> : null}
         </div>
         {emailAndPasswordEnabled ? (
           <form
