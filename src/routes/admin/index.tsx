@@ -314,7 +314,7 @@ function SearchConsoleNote({ site }: { site: SiteConfig }) {
       <p className="mt-2">Nothing below is marked done from inside this app. Indexing and rankings are not guaranteed, and the site is not verified until you finish the steps in Google.</p>
       <ol className="mt-3 list-decimal space-y-1 pl-5">
         <li>Open Google Search Console.</li>
-        <li>Add the domain property theluxurycars.com.</li>
+        <li>Add the domain property theluxurytransport.com.</li>
         <li>Verify ownership with the DNS TXT record Google gives you. A meta code, if you use that method, goes in the field above. Leave it empty until then.</li>
         <li>Submit {site.url.replace(/\/$/, "")}/sitemap.xml.</li>
         <li>Use URL Inspection on the homepage, rent, buy, and any category or location page you care about.</li>

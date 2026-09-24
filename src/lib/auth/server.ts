@@ -72,14 +72,14 @@ const googleClientId = env("GOOGLE_CLIENT_ID");
 const googleClientSecret = env("GOOGLE_CLIENT_SECRET");
 
 // This app's own Better Auth origin. Production callbacks follow the host the
-// visitor is actually on (Vercel or theluxurycars.com). Sandbox previews use
+// visitor is actually on (Vercel or theluxurytransport.com). Sandbox previews use
 // the dynamic `*.grok-sandbox.com` host. localhost is only a fallback when no
 // host can be resolved.
 const explicitBaseURL = env("BETTER_AUTH_URL");
 const PRODUCTION_HOSTS = [
   "the-luxury-transport.vercel.app",
-  "theluxurycars.com",
-  "www.theluxurycars.com",
+  "theluxurytransport.com",
+  "www.theluxurytransport.com",
 ];
 const LOCAL_DEV_ORIGINS: string[] = [
   "http://localhost:8080",

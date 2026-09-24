@@ -6,7 +6,7 @@ import { Shell } from "@/components/shell";
 import { NotFound } from "@/components/states";
 import { getSite } from "@/lib/marketplace/fns";
 import { defaultSite, type SiteConfig } from "@/lib/site";
-import { homeDescription, homeTitle } from "@/lib/seo";
+import { homeTitle } from "@/lib/seo";
 import appCss from "../styles.css?url";
 
 let browserSite: SiteConfig | null = null;
@@ -29,7 +29,6 @@ export const Route = createRootRouteWithContext<{ site: SiteConfig }>()({
         { charSet: "utf-8" },
         { name: "viewport", content: "width=device-width, initial-scale=1" },
         { title: homeTitle(site) },
-        { name: "description", content: site.metaDescription || homeDescription(site) },
         { name: "theme-color", content: "#0f3d34" },
         ...(site.googleVerification
           ? [{ name: "google-site-verification", content: site.googleVerification }]

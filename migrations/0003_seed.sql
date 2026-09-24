@@ -3,7 +3,7 @@
 
 insert into site_settings (key, value) values (
   'identity',
-  $id${"name":"The Luxury Cars","legalName":"The Luxury Cars","tagline":"Find your next car in Dubai","description":"The Luxury Cars is a Dubai automotive marketplace where customers can discover cars available for rent and cars available for sale from rental companies, dealers, businesses and private sellers.","url":"https://theluxurycars.com","email":"hello@theluxurycars.com","phone":"","supportWhatsapp":"","instagram":"","x":"","facebook":"","logoUrl":"","metaTitle":"","metaDescription":"","moderation":"manual","remoderateEdits":true}$id$::jsonb
+  $id${"name":"The Luxury Cars","legalName":"The Luxury Cars","tagline":"Find your next car in Dubai","description":"The Luxury Cars is a Dubai automotive marketplace where customers can discover cars available for rent and cars available for sale from rental companies, dealers, businesses and private sellers.","url":"https://theluxurytransport.com","email":"theluxrytransport@gmail.com","phone":"","supportWhatsapp":"","instagram":"","x":"","facebook":"","logoUrl":"","metaTitle":"","metaDescription":"","moderation":"manual","remoderateEdits":true}$id$::jsonb
 );
 
 insert into categories (slug, name, kind, sort_order) values

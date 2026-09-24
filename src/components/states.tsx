@@ -16,6 +16,7 @@ export function EmptyState({ title, body, action }: { title: string; body: strin
 export function NotFound() {
   return (
     <main className="mx-auto max-w-xl px-4 py-20 text-center">
+      <meta name="robots" content="noindex, follow" />
       <p className="text-xs font-medium uppercase tracking-widest text-pine">404</p>
       <h1 className="mt-3 text-4xl text-ink">Sorry, we couldn't find that car.</h1>
       <p className="mt-3 text-ink-soft">The page may have moved, or the listing is no longer published.</p>

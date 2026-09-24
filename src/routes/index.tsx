@@ -60,7 +60,7 @@ function Home() {
           </div>
         </div>
         <figure className="relative">
-          <img src="/media/hero.jpg" alt="A car parked along Dubai Marina at dusk" width={1600} height={900} className="aspect-video w-full rounded-3xl object-cover" />
+          <img src="/media/hero.jpg" alt="Black Mercedes-Benz G63 parked along Dubai Marina at dusk" width={1600} height={900} fetchPriority="high" decoding="async" className="aspect-video w-full rounded-3xl object-cover" />
           <figcaption className="absolute bottom-3 left-3 rounded-2xl bg-card/95 px-3 py-2 text-sm text-ink">
             {data.total} live {data.total === 1 ? "listing" : "listings"} · {data.rentCount} for rent · {data.saleCount} for sale
           </figcaption>

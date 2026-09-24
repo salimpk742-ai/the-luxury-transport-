@@ -30,7 +30,7 @@ export const defaultSite: SiteConfig = {
   tagline: "Find your next car in Dubai",
   description:
     "The Luxury Cars is a Dubai automotive marketplace connecting customers with rental companies, dealers, businesses and private vehicle sellers.",
-  url: "https://theluxurycars.com",
+  url: "https://theluxurytransport.com",
   email: "theluxrytransport@gmail.com",
   phone: "",
   supportWhatsapp: "",
@@ -66,11 +66,30 @@ function httpsOrEmpty(value: unknown) {
   return /^https:\/\/[^\s]+$/i.test(next) ? next.replace(/\/$/, "") : "";
 }
 
+const STALE_SITE_ORIGINS = new Set([
+  "https://theluxurycars.com",
+  "https://www.theluxurycars.com",
+  "http://theluxurycars.com",
+  "http://www.theluxurycars.com",
+  "https://the-luxury-transport.vercel.app",
+  "https://www.theluxurytransport.com",
+]);
+
+function productionUrl(value: string) {
+  const next = value.replace(/\/$/, "");
+  return STALE_SITE_ORIGINS.has(next) ? defaultSite.url : next;
+}
+
 function verificationCode(value: unknown) {
   const raw = optionalClip(value, 160);
   const fromTag = raw.match(/content\s*=\s*["']([A-Za-z0-9_-]+)["']/i);
   const token = (fromTag?.[1] ?? raw).trim();
   return /^[A-Za-z0-9_-]{8,80}$/.test(token) ? token : "";
+}
+
+/** Google Search Console token from an env var or an admin-saved value. Empty if unset. */
+export function googleSiteVerification(value: unknown) {
+  return verificationCode(value);
 }
 
 export function normalizeSite(value: unknown): SiteConfig {
@@ -82,7 +101,7 @@ export function normalizeSite(value: unknown): SiteConfig {
     legalName: clip(v.legalName, defaultSite.legalName, 80),
     tagline: clip(v.tagline, defaultSite.tagline, 80),
     description: clip(v.description, defaultSite.description, 400),
-    url: /^https?:\/\/[^\s]+$/i.test(url) ? url.replace(/\/$/, "") : defaultSite.url,
+    url: /^https?:\/\/[^\s]+$/i.test(url) ? productionUrl(url) : defaultSite.url,
     email: clip(v.email, defaultSite.email, 80),
     phone: optionalClip(v.phone, 20),
     supportWhatsapp: optionalClip(v.supportWhatsapp, 20),

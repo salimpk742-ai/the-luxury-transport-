@@ -2,7 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { REPORT_REASONS } from "@/lib/catalog";
 import { sendReport } from "@/lib/marketplace/fns";
-import { siteFromMatches, siteTitle } from "@/lib/site";
+import { publicHead } from "@/lib/seo";
+import { siteFromMatches } from "@/lib/site";
 import { Button, Field, SelectInput, TextArea } from "@/components/ui";
 
 export const Route = createFileRoute("/report-listing")({
@@ -12,14 +13,12 @@ export const Route = createFileRoute("/report-listing")({
   },
   head: ({ matches }) => {
     const site = siteFromMatches(matches);
-    return {
-      meta: [
-        { title: siteTitle(site, "Report a listing") },
-        { name: "description", content: "Report incorrect, suspicious, or unavailable vehicle listings." },
-        { name: "robots", content: "noindex,follow" },
-      ],
-      links: [{ rel: "canonical", href: `${site.url}/report-listing` }],
-    };
+    return publicHead(site, {
+      title: `Report a listing | ${site.name}`,
+      description: "Report incorrect, suspicious, or unavailable vehicle listings.",
+      path: "/report-listing",
+      index: false,
+    });
   },
   component: ReportPage,
 });

@@ -13,7 +13,7 @@ export const Route = createFileRoute("/rent/")({
   head: ({ matches, match }) => {
     const site = siteFromMatches(matches);
     return publicHead(site, {
-      title: `Car Rental in Dubai | Rent Cars in Dubai | ${site.name}`,
+      title: `Car rental in Dubai | ${site.name}`,
       description: `Search cars for rent in Dubai on ${site.name}. Compare daily, weekly and monthly prices, then message the advertiser on WhatsApp.`,
       path: "/rent",
       index: !filteredSearch(match.search),

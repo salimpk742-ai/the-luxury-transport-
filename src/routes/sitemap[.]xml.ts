@@ -4,7 +4,11 @@ import { defaultSite } from "@/lib/site";
 import { slugify } from "@/lib/text";
 
 function xml(value: string) {
-  return value.replace(/&/g, "&").replace(/</g, "<").replace(/>/g, ">");
+  return value
+    .replace(/&/g, "&" + "amp;")
+    .replace(/</g, "&" + "lt;")
+    .replace(/>/g, "&" + "gt;")
+    .replace(/"/g, "&" + "quot;");
 }
 
 function day(value: string | undefined) {
@@ -37,6 +41,7 @@ export const Route = createFileRoute("/sitemap.xml")({
           urls.push({ path: `/${root}/${row.slugVehicle}/${row.slugArea}/${row.id}`, lastmod: day(row.updatedAt) });
         }
         for (const dealer of data.dealers) urls.push({ path: `/dealer/${dealer.slug}` });
+        for (const place of data.locations) urls.push({ path: `/locations/${place.slug}`, lastmod: day(place.updatedAt) });
         const catalog = await indexableCatalog();
         for (const row of catalog.makes) {
           if (row.real >= 2) urls.push({ path: `/${row.type === "SALE" ? "buy" : "rent"}/${slugify(row.make)}` });
@@ -56,7 +61,13 @@ export const Route = createFileRoute("/sitemap.xml")({
           });
           if (result.items.filter((item) => !item.isDemo).length >= 2) urls.push({ path: `/dubai/${intent.slug}` });
         }
-        const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls
+        const seen = new Set<string>();
+        const unique = urls.filter((entry) => {
+          if (seen.has(entry.path)) return false;
+          seen.add(entry.path);
+          return true;
+        });
+        const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${unique
           .map((entry) => {
             const loc = `<loc>${xml(entry.path === "/" ? origin : `${origin}${entry.path}`)}</loc>`;
             const last = entry.lastmod ? `<lastmod>${entry.lastmod}</lastmod>` : "";

@@ -18,23 +18,38 @@ export function titled(site: SiteConfig, page: string) {
 }
 
 export function canonical(site: SiteConfig, path: string) {
-  const base = (site.url || "https://theluxurycars.com").replace(/\/$/, "").replace(/^http:\/\//i, "https://");
+  const base = (site.url || "https://theluxurytransport.com").replace(/\/$/, "").replace(/^http:\/\//i, "https://");
   const next = path.startsWith("/") ? path : `/${path}`;
   return `${base}${next === "/" ? "" : next}`;
 }
 
 export function publicHead(
   site: SiteConfig,
-  input: { title: string; description: string; path: string; index?: boolean },
+  input: { title: string; description: string; path: string; index?: boolean; image?: string },
 ) {
   const description = input.description.replace(/\s+/g, " ").trim().slice(0, 180);
+  const url = canonical(site, input.path);
+  const image = input.image ? absoluteAsset(site, input.image) : absoluteAsset(site, "/og.jpg");
+  const meta: Array<{ title: string } | { name: string; content: string } | { property: string; content: string }> = [
+    { title: input.title },
+    { name: "description", content: description },
+    { name: "robots", content: input.index === false ? "noindex,follow" : "index,follow" },
+    { property: "og:title", content: input.title },
+    { property: "og:description", content: description },
+    { property: "og:url", content: url },
+    { property: "og:type", content: "website" },
+    { property: "og:site_name", content: site.name },
+    { name: "twitter:card", content: "summary_large_image" },
+    { name: "twitter:title", content: input.title },
+    { name: "twitter:description", content: description },
+  ];
+  if (image) {
+    meta.push({ property: "og:image", content: image });
+    meta.push({ name: "twitter:image", content: image });
+  }
   return {
-    meta: [
-      { title: input.title },
-      { name: "description", content: description },
-      { name: "robots", content: input.index === false ? "noindex,follow" : "index,follow" },
-    ],
-    links: [{ rel: "canonical", href: canonical(site, input.path) }],
+    meta,
+    links: [{ rel: "canonical", href: url }],
   };
 }
 
@@ -42,6 +57,7 @@ export function noindexHead(title: string) {
   return {
     meta: [
       { title },
+      { name: "description", content: "This page is not a public search result." },
       { name: "robots", content: "noindex,follow" },
     ],
   };
@@ -82,6 +98,7 @@ export function listingSeo(site: SiteConfig, listing: Listing) {
     description: parts.filter(Boolean).join(" ").replace(/\s+/g, " ").trim(),
     path,
     index: !listing.isDemo,
+    image: listing.isDemo ? "" : listing.imageUrl,
   };
 }
 
@@ -162,7 +179,6 @@ export function listingGraph(site: SiteConfig, listing: Listing) {
       priceCurrency: "AED",
       price: String(price),
       url: canonical(site, path),
-      availability: "https://schema.org/InStock",
       businessFunction: rent ? "https://schema.org/LeaseOut" : "https://schema.org/Sell",
       seller: {
         "@type": listing.sellerType === "Private Seller" ? "Person" : "Organization",

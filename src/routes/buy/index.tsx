@@ -13,7 +13,7 @@ export const Route = createFileRoute("/buy/")({
   head: ({ matches, match }) => {
     const site = siteFromMatches(matches);
     return publicHead(site, {
-      title: `Cars for Sale in Dubai | Buy Cars in Dubai | ${site.name}`,
+      title: `Cars for sale in Dubai | ${site.name}`,
       description: `Search cars for sale in Dubai on ${site.name}, from dealers, businesses and private sellers. Confirm the vehicle and the terms with the seller before you pay.`,
       path: "/buy",
       index: !filteredSearch(match.search),

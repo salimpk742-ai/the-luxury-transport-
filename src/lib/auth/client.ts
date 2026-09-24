@@ -83,8 +83,8 @@ type PopupMessage = { source: "grok-auth-popup"; token: string | null; error?: s
  *   `/auth/popup`, which starts `signInSocial` (no app chrome) and, on return,
  *   posts the session bearer token back.
  * - **Deployed** (and local non-iframe): a normal full-page redirect to Google.
- *   With `BETTER_AUTH_URL=https://theluxurycars.com` the redirect URI is
- *   `https://theluxurycars.com/api/auth/callback/google`.
+ *   With `BETTER_AUTH_URL=https://theluxurytransport.com` the redirect URI is
+ *   `https://theluxurytransport.com/api/auth/callback/google`.
  *
  * Either way it clears any existing local session FIRST so a new sign-in
  * replaces the previous one.

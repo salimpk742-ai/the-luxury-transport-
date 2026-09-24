@@ -1,8 +1,8 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, useRouteContext } from "@tanstack/react-router";
 import { getPlacePage } from "@/lib/marketplace/fns";
 import { ListingCard } from "@/components/listing-card";
 import { EmptyState } from "@/components/states";
-import { publicHead, titled } from "@/lib/seo";
+import { breadcrumbGraph, canonical, publicHead, titled } from "@/lib/seo";
 import { siteFromMatches } from "@/lib/site";
 import type { Listing } from "@/lib/marketplace/types";
 
@@ -28,11 +28,22 @@ export const Route = createFileRoute("/locations/$slug")({
 
 function LocationPage() {
   const { place, result } = Route.useLoaderData();
+  const { site } = useRouteContext({ from: "__root__" });
   const rent = result.items.filter((item) => item.type === "RENT");
   const sale = result.items.filter((item) => item.type === "SALE");
+  const crumbs = [
+    { name: "Home", item: canonical(site, "/") },
+    { name: place.area },
+  ];
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
-      <p className="text-xs font-medium uppercase tracking-widest text-pine">{place.emirate}</p>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbGraph(crumbs)) }} />
+      <nav className="text-sm text-muted" aria-label="Breadcrumb">
+        <Link to="/" className="hover:text-ink">Home</Link>
+        <span> / </span>
+        <span className="text-ink">{place.area}</span>
+      </nav>
+      <p className="mt-3 text-xs font-medium uppercase tracking-widest text-pine">{place.emirate}</p>
       <h1 className="mt-2 text-4xl text-ink sm:text-5xl">Cars in {place.area}</h1>
       <p className="mt-3 max-w-xl text-ink-soft">
         {result.total

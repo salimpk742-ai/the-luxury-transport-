@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { betterAuth } from "better-auth";
 
-const BASE = "https://theluxurycars.com";
+const BASE = "https://theluxurytransport.com";
 const SECRET = "test-secret-test-secret-test-secret-32chars";
 
 function jwt(payload) {

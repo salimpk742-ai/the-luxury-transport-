@@ -1,11 +1,11 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, useRouteContext } from "@tanstack/react-router";
 import { BadgeCheck } from "lucide-react";
 import { getDealer } from "@/lib/marketplace/fns";
 import { accountTypeLabel } from "@/lib/format";
 import { ListingCard } from "@/components/listing-card";
 import { EmptyState } from "@/components/states";
 import { Monogram } from "@/components/ui";
-import { publicHead, titled } from "@/lib/seo";
+import { breadcrumbGraph, canonical, publicHead, titled } from "@/lib/seo";
 import { siteFromMatches } from "@/lib/site";
 import type { Listing } from "@/lib/marketplace/types";
 
@@ -30,10 +30,21 @@ export const Route = createFileRoute("/dealer/$slug")({
 
 function DealerPage() {
   const { company, listings } = Route.useLoaderData();
+  const { site } = useRouteContext({ from: "__root__" });
   const rent = listings.filter((item) => item.type === "RENT");
   const sale = listings.filter((item) => item.type === "SALE");
+  const crumbs = [
+    { name: "Home", item: canonical(site, "/") },
+    { name: company.name },
+  ];
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbGraph(crumbs)) }} />
+      <nav className="mb-4 text-sm text-muted" aria-label="Breadcrumb">
+        <Link to="/" className="hover:text-ink">Home</Link>
+        <span> / </span>
+        <span className="text-ink">{company.name}</span>
+      </nav>
       <div className="flex items-start gap-4">
         {company.logoUrl ? (
           <img src={company.logoUrl} alt="" className="h-16 w-16 rounded-2xl object-cover" />

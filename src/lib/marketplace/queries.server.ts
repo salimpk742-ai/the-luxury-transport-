@@ -1,6 +1,6 @@
 import { getSql, type Sql } from "@/lib/db";
 import { sellerTypeFor } from "@/lib/format";
-import { normalizeSite, type SiteConfig } from "@/lib/site";
+import { googleSiteVerification, normalizeSite, type SiteConfig } from "@/lib/site";
 import type { ListingSearch } from "@/lib/search";
 import { cleanText, digits, slugify } from "@/lib/text";
 import type {
@@ -165,7 +165,11 @@ function intOf(value?: string, max = 100_000_000) {
 export async function readSite(): Promise<SiteConfig> {
   const sql = await getSql();
   const rows = await sql<{ value: unknown }>`select value from site_settings where key = 'identity'`;
-  return normalizeSite(rows[0]?.value);
+  const site = normalizeSite(rows[0]?.value);
+  if (!site.googleVerification) {
+    site.googleVerification = googleSiteVerification(process.env.GOOGLE_SITE_VERIFICATION);
+  }
+  return site;
 }
 
 export async function searchListings(
@@ -1007,7 +1011,16 @@ export async function sitemapEntries() {
       select 1 from listings l where l.company_id = companies.id and l.status = 'PUBLISHED'
     )
   `;
-  return { listings: rows.map((row) => ({ ...row, id: Number(row.id) })), dealers };
+  const locations = await sql<{ slug: string; updatedAt: string }>`
+    select l.area_slug as slug, max(l.updated_at)::text as "updatedAt"
+    from listings l
+    join companies c on c.id = l.company_id
+    where l.status = 'PUBLISHED' and c.is_demo = false and c.suspended = false
+      and (l.expires_at is null or l.expires_at > now())
+      and l.area_slug <> ''
+    group by l.area_slug
+  `;
+  return { listings: rows.map((row) => ({ ...row, id: Number(row.id) })), dealers, locations };
 }
 
 export async function adminOverview(userId: string) {
