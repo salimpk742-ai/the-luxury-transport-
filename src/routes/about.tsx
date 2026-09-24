@@ -18,7 +18,7 @@ export const Route = createFileRoute("/about")({
 function AboutPage() {
   const { site } = useRouteContext({ from: "__root__" });
   return (
-    <Prose title={`About ${site.name}`}>
+    <Prose title={`About ${site.name}`} reviewNote={false}>
       <p>
         {site.name} is a Dubai-focused online automotive marketplace. It helps customers discover vehicles available for rental and purchase from independent rental companies, dealers, businesses and private sellers.
       </p>
