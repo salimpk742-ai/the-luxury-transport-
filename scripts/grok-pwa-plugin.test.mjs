@@ -354,6 +354,24 @@ test("document title entities are not double-escaped on og:title", () => {
   assert.doesNotMatch(out, /Cats &amp;amp; Dogs/);
 });
 
+
+test("page title and canonical become og:title and og:url", () => {
+  const ctx = {
+    host: "theluxurytransport.com",
+    site: { title: "The Luxury Cars", description: "Marketplace", card: "custom", image: "/og.jpg" },
+  };
+  const out = injectGrokPwaHead(
+    '<html><head><title>Car rental in Dubai | The Luxury Cars</title><link rel="canonical" href="https://theluxurytransport.com/rent"><meta property="og:title" content="The Luxury Cars"><meta property="og:url" content="https://theluxurycars.com/rent"></head></html>',
+    ctx,
+  );
+  assert.match(out, /property="og:title" content="Car rental in Dubai \| The Luxury Cars"/);
+  assert.match(out, /property="og:url" content="https:\/\/theluxurytransport.com\/rent"/);
+  assert.match(out, /property="og:image" content="https:\/\/theluxurytransport.com\/og.jpg"/);
+  assert.doesNotMatch(out, /theluxurycars\.com/);
+  assert.equal(out.split('property="og:title"').length - 1, 1);
+  assert.equal(out.split('property="og:url"').length - 1, 1);
+  assert.equal(out, injectGrokPwaHead(out, ctx));
+});
 test("site.json title wins over the host slug", () => {
   const out = injectGrokPwaHead("<html><head></head></html>", {
     host: "wild-race.grok.me",

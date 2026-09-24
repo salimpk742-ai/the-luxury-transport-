@@ -62,6 +62,7 @@ export declare function grokOgHeadTags(ctx?: {
   site?: OgSite;
   documentTitle?: string;
   cwd?: string;
+  url?: string;
 }): string[];
 export declare function stripShareMetaTags(html: string): string;
 export declare function normalizeHeadContext(ctx?: GrokHeadContext): {

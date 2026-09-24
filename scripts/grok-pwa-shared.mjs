@@ -297,6 +297,13 @@ export function titleFromDocument(html) {
   return match ? unescapeHtml(match[1]).trim() : "";
 }
 
+function canonicalFromDocument(html) {
+  const tag = String(html ?? "").match(/<link\b[^>]*\brel\s*=\s*["']canonical["'][^>]*>/i);
+  if (!tag) return "";
+  const href = tag[0].match(/\bhref\s*=\s*["']([^"']+)["']/i);
+  return href ? unescapeHtml(href[1]).trim() : "";
+}
+
 export function resolveOgTitle(
   site = {},
   appName = DEFAULT_APP_NAME,
@@ -311,6 +318,13 @@ export function resolveOgTitle(
   if (fromHost && fromHost !== DEFAULT_APP_NAME) return fromHost;
   const fromArg = String(appName ?? "").trim();
   return fromArg || DEFAULT_APP_NAME;
+}
+
+/** Page `<title>` wins so share cards match the SEO title. Site name is the fallback. */
+function pageOgTitle(site, appName, host, documentTitle) {
+  const fromDoc = String(documentTitle ?? "").trim();
+  if (fromDoc) return fromDoc;
+  return resolveOgTitle(site, appName, host, "");
 }
 
 export function siteHasCustomCard(site = {}) {
@@ -339,13 +353,18 @@ export function grokOgHeadTags({
   site = {},
   documentTitle = "",
   cwd = process.cwd(),
+  url = "",
 } = {}) {
-  const title = resolveOgTitle(site, appName, host, documentTitle);
+  const title = pageOgTitle(site, appName, host, documentTitle);
   const publicHost = resolvePublicHost(host);
   const tags = [
     `<meta name="twitter:card" content="summary_large_image">`,
     `<meta property="og:title" content="${escapeHtml(title)}">`,
   ];
+  const pageUrl = String(url ?? "").trim();
+  if (pageUrl) {
+    tags.push(`<meta property="og:url" content="${escapeHtml(pageUrl)}">`);
+  }
   const description = String(site.description ?? "").trim();
   if (description) {
     tags.push(`<meta property="og:description" content="${escapeHtml(description)}">`);
@@ -426,6 +445,7 @@ export function injectGrokPwaHead(html, ctx = {}) {
   if (typeof html !== "string") return html;
   const { site, projectId, creator, creatorId, host, cwd } = normalizeHeadContext(ctx);
   const documentTitle = titleFromDocument(html);
+  const canonicalUrl = canonicalFromDocument(html);
   const appName = resolveOgTitle(
     site,
     ctx.appName ?? DEFAULT_APP_NAME,
@@ -444,7 +464,7 @@ export function injectGrokPwaHead(html, ctx = {}) {
 
   next = insertAfterHeadOpen(
     next,
-    grokOgHeadTags({ host, appName, site, documentTitle, cwd }).join(""),
+    grokOgHeadTags({ host, appName, site, documentTitle, cwd, url: canonicalUrl }).join(""),
   );
 
   if (!next.includes("/grok-app-builder/extensions.js")) {
