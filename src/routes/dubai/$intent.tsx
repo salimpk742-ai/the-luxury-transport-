@@ -24,8 +24,7 @@ export const Route = createFileRoute("/dubai/$intent")({
         },
       },
     });
-    const real = result.items.filter((item) => !item.isDemo).length;
-    return { intent, result, indexable: real >= 2 };
+    return { intent, result };
   },
   head: ({ matches, loaderData, params, match }) => {
     const site = siteFromMatches(matches);
@@ -34,7 +33,8 @@ export const Route = createFileRoute("/dubai/$intent")({
       title: titled(site, intent?.title ?? "Dubai cars"),
       description: intent?.description || site.description,
       path: `/dubai/${params.intent}`,
-      index: Boolean(loaderData?.indexable) && !filteredSearch(match.search),
+      // Core SEO hubs must stay indexable. Only hide filtered query-string variants.
+      index: !filteredSearch(match.search),
     });
   },
   component: SeoPage,
